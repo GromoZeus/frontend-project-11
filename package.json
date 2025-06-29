@@ -35,6 +35,8 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
-    "bootstrap": "^5.3.7"
+    "bootstrap": "^5.3.7",
+    "valtio": "^2.1.5",
+    "yup": "^1.6.1"
   }
 }
