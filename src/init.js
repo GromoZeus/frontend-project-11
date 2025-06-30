@@ -1,28 +1,48 @@
 import { proxy, subscribe, snapshot } from 'valtio/vanilla'
-import { string } from 'yup'
+import { string, setLocale } from 'yup'
+import i18n from 'i18next'
+import content from './locales/content.js'
+
+i18n.init({
+  lng: 'ru',
+  resources: {
+    ru: content,
+  },
+})
+
+setLocale({
+  string: {
+    url: i18n.t('feedback.invalidUrl'),
+  },
+  mixed: {
+    notOneOf: i18n.t('feedback.duplicateUrl'),
+  },
+})
 
 const form = document.querySelector('form')
-const errSel = document.querySelector('.feedback')
+const errSect = document.querySelector('.feedback')
 
 const state = proxy({
-  isValidUrl: true,
+  linkForm: {
+    isValidUrl: true,
+    feedbackMsg: '',
+  },
   feeds: [],
-  errorMsg: '',
 })
 
 const validateUrl = (url) => {
   const schemaUrl = string()
-    .url('Ссылка должна быть валидным URL')
-    .test('no-duplicates', 'RSS уже существует', url => !state.feeds.includes(url))
-  // .notOneOf(state.feeds, 'URL уже существует')
+    .url()
+    // .test('no-duplicates', url => !state.feeds.includes(url))
+    .notOneOf(state.feeds)
 
   return schemaUrl.validate(url)
     .then(() => {
-      state.errorMsg = ''
+      state.linkForm.feedbackMsg = ''
       return true
     })
     .catch((err) => {
-      state.errorMsg = err.message
+      state.linkForm.feedbackMsg = err.message
       return false
     })
 }
@@ -30,7 +50,7 @@ const validateUrl = (url) => {
 const init = (state) => {
   const updateUI = () => {
     const obj = snapshot(state)
-    errSel.textContent = obj.errorMsg
+    errSect.textContent = obj.linkForm.feedbackMsg
   }
 
   subscribe(state, updateUI)
@@ -47,7 +67,7 @@ const init = (state) => {
           form.reset()
           inputValueForm.focus()
         }
-        state.isValidUrl = isValue
+        state.linkForm.isValidUrl = isValue
       })
   })
 }
