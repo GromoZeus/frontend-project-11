@@ -13,6 +13,9 @@ dist
 dist-ssr
 *.local
 
+# Temporary files deleted from the project
+primer.html 
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
