@@ -50,7 +50,7 @@ const validateUrl = (url) => {
     })
 }
 
-const parserRSS = (dataRSS) => {
+const parseRSS = (dataRSS) => {
   // Извлекаем чистую base64 часть (если есть префикс data:...)
   const codedString = dataRSS.includes(',')
     ? dataRSS.split(',')[1]
@@ -63,6 +63,10 @@ const parserRSS = (dataRSS) => {
   const parser = new DOMParser()
   const xmlDoc = parser.parseFromString(decodedString, 'application/xml')
 
+  const channel = xmlDoc.querySelector('channel')
+  const title = channel.querySelector('title').textContent
+  const items = xmlDoc.querySelectorAll('item')
+
   // Проверяем на ошибки парсинга
   const parserError = xmlDoc.querySelector('parsererror')
   if (parserError) {
@@ -71,18 +75,67 @@ const parserRSS = (dataRSS) => {
     throw new Error(`XML parsing error: ${parserError.textContent}`)
   }
 
-  return xmlDoc
+  return { title, items }
 }
 
-const addPostsState = (feedID, postXML, postsState) => {
-  postXML.forEach((item, index) => {
-    const itemTitle = item.querySelector('title').textContent
-    const itemLink = item.querySelector('link').textContent
-    const itemDesc = item.querySelector('description').textContent
+const updatePosts = (state) => {
+  // Собираем промисы для всех RSS-лент
+  const feedPromises = state.feeds.map(feedUrl =>
+    axios.get(`https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(feedUrl.url)}`)
+      .then((response) => {
+        if (response.data.contents) {
+          return parseRSS(response.data.contents)
+        }
+        throw new Error('Empty response contents')
+      })
+      .then(({ items }) => {
+        const currentPosts = state.posts
+        const postsLinks = currentPosts.map(post => post.link)
+        console.log(state)
 
-    postsState.push({ feedID: feedID, postID: index + 1, title: itemTitle, link: itemLink, description: itemDesc })
+        items.forEach((item) => {
+          const itemLink = item.querySelector('link').textContent
+          if (!postsLinks.includes(itemLink)) {
+            addPostToState(feedUrl.id, item, state.posts)
+          }
+        })
+      })
+      .catch((error) => {
+        console.error(`Ошибка в RSS ${feedUrl.url}:`, error)
+      }),
+  )
+
+  // Ждём завершения всех промисов, затем запускаем следующий цикл
+  Promise.all(feedPromises)
+    .finally(() =>
+      setTimeout(() => updatePosts(state), 5000), // Следующая проверка через 5 сек
+    )
+}
+
+const addPostToState = (feedID, itemXML, postsState) => {
+  const postID = state.posts.length + 1
+  const itemTitle = itemXML.querySelector('title').textContent
+  const itemLink = itemXML.querySelector('link').textContent
+  const itemDesc = itemXML.querySelector('description').textContent
+
+  postsState.push({
+    feedID: feedID,
+    postID: postID,
+    title: itemTitle,
+    link: itemLink,
+    description: itemDesc,
   })
 }
+
+// const addPostsState = (feedID, postXML, postsState) => {
+//   postXML.forEach((item, index) => {
+//     const itemTitle = item.querySelector('title').textContent
+//     const itemLink = item.querySelector('link').textContent
+//     const itemDesc = item.querySelector('description').textContent
+
+//     postsState.push({ feedID: feedID, postID: index + 1, title: itemTitle, link: itemLink, description: itemDesc })
+//   })
+// }
 
 // const form = document.querySelector('form')
 // const feedbackSect = document.querySelector('.feedback')
@@ -241,33 +294,46 @@ const init = (state) => {
   form.addEventListener('submit', (event) => {
     event.preventDefault()
 
-    const inputForm = form.elements.url
-    const url = inputForm.value.trim()
+    const inputArea = form.elements.url
+    const url = inputArea.value.trim()
     validateUrl(url)
       .then((isValue) => {
         if (isValue) {
+          // state.process.processState = 'processing'
           // state.feeds.push(url)
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&disableCache=true`
+          const proxyUrl = `https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(url)}`
           axios.get(proxyUrl)
             .then((response) => {
-              const dataRSS = response.data.contents
-              const xmlDoc = parserRSS(dataRSS)
-
+              if (response.data.contents) {
+                return parseRSS(response.data.contents)
+              }
+              state.process.feedbackMsg = i18n.t('feedback.emptyContents')
+              state.process.processState = 'failed'
+              throw new Error('Empty response contents')
+            })
+            // .then(({ title, items }) => {
+            //   const feedID = state.feeds.length + 1
+            //   state.feeds.push({ id: feedID, title: title, url: url })
+            //   return { items, feedID }
+            // })
+            .then(({ items, title }) => {
               // Теперь можно извлекать данные из RSS
-              const channel = xmlDoc.querySelector('channel')
-              const title = channel.querySelector('title').textContent
-              const items = xmlDoc.querySelectorAll('item')
+              // const channel = xmlDoc.querySelector('channel')
+              // const title = channel.querySelector('title').textContent
+              // const items = xmlDoc.querySelectorAll('item')
 
               // console.log('Заголовок канала:', title)
-              const uniqID = state.feeds.length + 1
-              state.feeds.push({ id: uniqID, title: title, url: url })
-              addPostsState(uniqID, items, state.posts)
+              const feedID = state.feeds.length + 1
+              state.feeds.push({ id: feedID, title: title, url: url })
+              // addPostsState(feedID, items, state.posts)
+              // updatePosts(state)
+              items.forEach(item => addPostToState(feedID, item, state.posts))
               // items.forEach((item, index) => {
               //   const itemTitle = item.querySelector('title').textContent
               //   const itemLink = item.querySelector('link').textContent
               //   const itemDesc = item.querySelector('description').textContent
 
-              //   state.posts.push({ feedID: uniqID, postID: index + 1, title: itemTitle, link: itemLink, description: itemDesc })
+              //   state.posts.push({ feedID: feedID, postID: index + 1, title: itemTitle, link: itemLink, description: itemDesc })
               // })
 
               state.process.processState = 'success'
@@ -277,16 +343,19 @@ const init = (state) => {
             .catch((error) => {
               state.process.feedbackMsg = i18n.t('feedback.networkError')
               state.process.processState = 'failed'
+              console.log(state.process.processState)
               console.error('Error:', error)
             })
           form.reset()
-          inputForm.focus()
+          inputArea.focus()
         }
         state.process.isValidUrl = isValue
       })
-    state.process.processState = 'filling'
+    // state.process.processState = 'filling'
     console.log(state.process.processState)
+    console.log(state)
   })
+  updatePosts(state)
 }
 
 export { state, init }

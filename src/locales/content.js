@@ -6,6 +6,7 @@ export default {
       successLoadRSS: 'RSS успешно загружен',
       parserError: 'XML parsing error: Ошибка синтаксического анализа XML: ошибка синтаксиса',
       networkError: 'Ошибка сети',
+      emptyContents: 'Пустой контент',
     },
   },
 }
