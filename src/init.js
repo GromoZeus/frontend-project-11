@@ -91,7 +91,7 @@ const updatePosts = (state) => {
       .then(({ items }) => {
         const currentPosts = state.posts
         const postsLinks = currentPosts.map(post => post.link)
-        console.log(state)
+        console.log(state.process.processState)
 
         items.forEach((item) => {
           const itemLink = item.querySelector('link').textContent
@@ -153,6 +153,7 @@ const state = proxy({
     isValidUrl: true,
     feedbackMsg: '',
   },
+  readPostsID: [],
 })
 
 const init = (state) => {

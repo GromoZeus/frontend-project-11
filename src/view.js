@@ -31,7 +31,7 @@ const renderPosts = (obj) => {
     // Создаем элемент <a> с атрибутами
     const linkElement = document.createElement('a')
     linkElement.href = item.link
-    linkElement.className = 'fw-bold'
+    linkElement.className = obj.readPostsID.includes(item.postID) ? 'fw-normal, link-secondary' : 'fw-bold'
     linkElement.setAttribute('data-id', item.postID)
     linkElement.setAttribute('target', '_blank')
     linkElement.setAttribute('rel', 'noopener noreferrer')
@@ -50,7 +50,7 @@ const renderPosts = (obj) => {
     liElement.appendChild(linkElement)
     liElement.appendChild(buttonElement)
 
-    ulElement.appendChild(liElement)
+    ulElement.prepend(liElement)
   })
 
   cardDiv.appendChild(ulElement)
@@ -110,7 +110,7 @@ const renderFeeds = (obj) => {
 export default (state) => {
   const form = document.querySelector('form')
   const feedbackSect = document.querySelector('.feedback')
-  const button = document.querySelector('button')
+  const button = document.querySelector('button[type="submit"]')
 
   const obj = snapshot(state)
 
@@ -201,6 +201,29 @@ export default (state) => {
   }
 
   feedbackSect.textContent = obj.process.feedbackMsg
+
+  const modal = document.getElementById('modal')
+
+  modal.addEventListener('show.bs.modal', (event) => {
+    // Button that triggered the modal
+    const button = event.relatedTarget
+    // Extract info from data-bs-* attributes
+    const recipient = button.getAttribute('data-id')
+    // If necessary, you could initiate an AJAX request here
+    // and then do the updating in a callback.
+    //
+    // Update the modal's content.
+    const modalTitle = modal.querySelector('.modal-title')
+    const modalBodyInput = modal.querySelector('.modal-body')
+    const post = obj.posts.find(item => item.postID === parseInt(recipient))
+
+    modalTitle.textContent = post?.title
+    modalBodyInput.textContent = post?.description
+
+    if (!state.readPostsID.includes(parseInt(recipient))) {
+      state.readPostsID.push(parseInt(recipient))
+    }
+  })
 
   // if (obj.process.processState === 'success') {
   // const feedSection = document.querySelector('.feeds')
