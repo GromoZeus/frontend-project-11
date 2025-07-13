@@ -4,7 +4,7 @@ export default {
       invalidUrl: 'Ссылка должна быть валидным URL',
       duplicateUrl: 'RSS уже существует',
       successLoadRSS: 'RSS успешно загружен',
-      parserError: 'XML parsing error: Ошибка синтаксического анализа XML: ошибка синтаксиса',
+      parserError: 'Ресурс не содержит валидный RSS',
       networkError: 'Ошибка сети',
       emptyContents: 'Пустой контент',
     },
