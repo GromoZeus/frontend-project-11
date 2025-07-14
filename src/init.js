@@ -1,5 +1,3 @@
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { proxy, subscribe } from 'valtio/vanilla'
 import axios from 'axios'
 import i18n from 'i18next'
@@ -97,7 +95,7 @@ export default () => {
           axios.get(proxyUrl)
             .then((response) => {
               if (response.data.contents) {
-                return parseRSS(response.data.contents)
+                return parseRSS(response.data.contents, state)
               }
               state.RSSprocess.process.feedbackMsg = i18n.t('feedback.emptyContents')
               state.RSSprocess.process.processState = 'failed'
