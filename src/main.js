@@ -1,5 +1,3 @@
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
-import { state, init } from './init.js'
+import init from './init.js'
 
-init(state)
+init()

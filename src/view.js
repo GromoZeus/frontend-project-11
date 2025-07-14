@@ -123,6 +123,7 @@ export default (state) => {
   }
 
   feedbackSect.textContent = obj.RSSprocess.process.feedbackMsg
+
   const modal = document.getElementById('modal')
 
   modal.addEventListener('show.bs.modal', (event) => {

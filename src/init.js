@@ -1,127 +1,80 @@
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { proxy, subscribe } from 'valtio/vanilla'
-import { string, setLocale } from 'yup'
 import axios from 'axios'
 import i18n from 'i18next'
 import content from './locales/content.js'
 import updateUI from './view.js'
+import validateUrl from './validate.js'
+import parseRSS from './parser.js'
 
-i18n.init({
-  lng: 'ru',
-  resources: {
-    ru: content,
-  },
-})
-
-const validateUrl = (url) => {
-  setLocale({
-    string: {
-      url: i18n.t('feedback.invalidUrl'),
-    },
-    mixed: {
-      notOneOf: i18n.t('feedback.duplicateUrl'),
+export default () => {
+  i18n.init({
+    lng: 'ru',
+    resources: {
+      ru: content,
     },
   })
 
-  state.RSSprocess.process.processState = 'processing'
-  const schemaUrl = string()
-    .url()
-    .notOneOf(state.RSSprocess.feeds.map(item => item.url))
+  const state = proxy({
+    RSSprocess: {
+      feeds: [],
+      posts: [],
+      process: {
+        processState: 'filling', // 'processing', 'failed', 'success'
+        contentUploaded: false,
+        isValidUrl: true,
+        feedbackMsg: '',
+      },
+    },
+    readPostsID: [],
+  })
 
-  return schemaUrl.validate(url)
-    .then(() => {
-      state.RSSprocess.process.feedbackMsg = ''
-      return true
-    })
-    .catch((err) => {
-      state.RSSprocess.process.feedbackMsg = err.message
-      state.RSSprocess.process.processState = 'failed'
-      return false
-    })
-}
-
-const parseRSS = (dataRSS) => {
-  try {
-    const codedString = dataRSS.includes(',')
-      ? dataRSS.split(',')[1]
-      : dataRSS
-
-    const decodedString = atob(codedString)
-
-    const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(decodedString, 'application/xml')
-
-    const channel = xmlDoc.querySelector('channel')
-    const title = channel.querySelector('title').textContent
-    const items = xmlDoc.querySelectorAll('item')
-
-    return { title, items }
-  }
-  catch (parserError) {
-    state.RSSprocess.process.feedbackMsg = i18n.t('feedback.parserError')
-    state.RSSprocess.process.processState = 'failed'
-    throw new Error(`XML parsing error: ${parserError.textContent}`)
-  }
-}
-
-const updatePosts = (state) => {
-  const feedPromises = state.RSSprocess.feeds.map(feedUrl =>
-    axios.get(`https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(feedUrl.url)}`)
-      .then((response) => {
-        if (response.data.contents) {
-          return parseRSS(response.data.contents)
-        }
-        throw new Error('Empty response contents')
-      })
-      .then(({ items }) => {
-        addPostToState(feedUrl.id, items, state.RSSprocess.posts)
-      })
-      .catch((error) => {
-        console.error(`Ошибка в RSS ${feedUrl.url}:`, error)
-      }),
-  )
-
-  Promise.all(feedPromises)
-    .finally(() =>
-      setTimeout(() => updatePosts(state), 5000),
-    )
-}
-const addPostToState = (feedID, itemsXML, postsState) => {
-  itemsXML.forEach((item) => {
-    const currentPosts = state.RSSprocess.posts
-    const postsLinks = currentPosts.map(post => post.link)
-    const itemLink = item.querySelector('link').textContent
-    if (!postsLinks.includes(itemLink)) {
-      const postID = state.RSSprocess.posts.length + 1
-      const itemTitle = item.querySelector('title').textContent
+  const addPostToState = (feedID, itemsXML, postsState) => {
+    itemsXML.forEach((item) => {
+      const currentPosts = state.RSSprocess.posts
+      const postsLinks = currentPosts.map(post => post.link)
       const itemLink = item.querySelector('link').textContent
-      const itemDesc = item.querySelector('description').textContent
+      if (!postsLinks.includes(itemLink)) {
+        const postID = state.RSSprocess.posts.length + 1
+        const itemTitle = item.querySelector('title').textContent
+        const itemLink = item.querySelector('link').textContent
+        const itemDesc = item.querySelector('description').textContent
 
-      postsState.push({
-        feedID: feedID,
-        postID: postID,
-        title: itemTitle,
-        link: itemLink,
-        description: itemDesc,
-      })
-    }
-  })
-}
+        postsState.push({
+          feedID: feedID,
+          postID: postID,
+          title: itemTitle,
+          link: itemLink,
+          description: itemDesc,
+        })
+      }
+    })
+  }
 
-const state = proxy({
-  RSSprocess: {
-    feeds: [],
-    posts: [],
-    process: {
-      processState: 'filling', // 'processing', 'failed', 'success'
-      contentUploaded: false,
-      isValidUrl: true,
-      feedbackMsg: '',
-    },
-  },
-  readPostsID: [],
-})
+  const updatePosts = () => {
+    const feedPromises = state.RSSprocess.feeds.map(feedUrl =>
+      axios.get(`https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(feedUrl.url)}`)
+        .then((response) => {
+          if (response.data.contents) {
+            return parseRSS(response.data.contents, state)
+          }
+          throw new Error('Empty response contents')
+        })
+        .then(({ items }) => {
+          addPostToState(feedUrl.id, items, state.RSSprocess.posts)
+        })
+        .catch((error) => {
+          console.error(`Ошибка в RSS ${feedUrl.url}:`, error)
+        }),
+    )
 
-const init = (state) => {
+    Promise.all(feedPromises)
+      .finally(() =>
+        setTimeout(() => updatePosts(), 5000),
+      )
+  }
+
   subscribe(state, () => updateUI(state))
 
   const form = document.querySelector('form')
@@ -137,7 +90,7 @@ const init = (state) => {
 
     const inputArea = form.elements.url
     const url = inputArea.value.trim()
-    validateUrl(url)
+    validateUrl(url, state)
       .then((isValue) => {
         if (isValue) {
           const proxyUrl = `https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(url)}`
@@ -152,7 +105,11 @@ const init = (state) => {
             })
             .then(({ items, title }) => {
               const feedID = state.RSSprocess.feeds.length + 1
-              state.RSSprocess.feeds.push({ id: feedID, title: title, url: url })
+              state.RSSprocess.feeds.push({
+                id: feedID,
+                title: title,
+                url: url,
+              })
               addPostToState(feedID, items, state.RSSprocess.posts)
 
               state.RSSprocess.process.processState = 'success'
@@ -176,6 +133,5 @@ const init = (state) => {
         state.RSSprocess.process.isValidUrl = isValue
       })
   })
-  updatePosts(state)
+  updatePosts()
 }
-export { state, init }
