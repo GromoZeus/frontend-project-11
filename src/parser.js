@@ -2,14 +2,8 @@ import i18n from 'i18next'
 
 export default (dataRSS, state) => {
   try {
-    const codedString = dataRSS.includes(',')
-      ? dataRSS.split(',')[1]
-      : dataRSS
-
-    const decodedString = atob(codedString)
-
     const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(decodedString, 'application/xml')
+    const xmlDoc = parser.parseFromString(dataRSS, 'application/xml')
 
     const channel = xmlDoc.querySelector('channel')
     const title = channel.querySelector('title').textContent

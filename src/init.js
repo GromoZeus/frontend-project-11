@@ -52,7 +52,7 @@ export default () => {
 
   const updatePosts = () => {
     const feedPromises = state.RSSprocess.feeds.map(feedUrl =>
-      axios.get(`https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(feedUrl.url)}`)
+      axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(feedUrl.url)}`)
         .then((response) => {
           if (response.data.contents) {
             return parseRSS(response.data.contents, state)
@@ -91,7 +91,7 @@ export default () => {
     validateUrl(url, state)
       .then((isValue) => {
         if (isValue) {
-          const proxyUrl = `https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(url)}`
+          const proxyUrl = `https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`
           axios.get(proxyUrl)
             .then((response) => {
               if (response.data.contents) {
