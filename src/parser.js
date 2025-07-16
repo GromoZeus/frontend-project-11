@@ -1,3 +1,5 @@
+// Модуль для парсинга XML-контента RSS-ленты и извлечения данных о постах и фидах.
+
 import i18n from 'i18next'
 
 export default (dataRSS, state) => {
@@ -7,9 +9,10 @@ export default (dataRSS, state) => {
 
     const channel = xmlDoc.querySelector('channel')
     const title = channel.querySelector('title').textContent
+    const description = channel.querySelector('description').textContent
     const items = xmlDoc.querySelectorAll('item')
 
-    return { title, items }
+    return { title, description, items }
   }
   catch (parserError) {
     state.RSSprocess.process.feedbackMsg = i18n.t('feedback.parserError')

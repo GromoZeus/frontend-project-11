@@ -1,3 +1,5 @@
+// Модуль для валидации введённого пользователем URL-адреса RSS-ленты.
+
 import { string, setLocale } from 'yup'
 import i18n from 'i18next'
 

@@ -1,3 +1,6 @@
+// Главный инициализирующий модуль приложения.
+// Настраивает локализацию, состояние приложения, обработчики формы и обновление постов RSS.
+
 import { proxy, subscribe } from 'valtio/vanilla'
 import axios from 'axios'
 import i18n from 'i18next'
@@ -69,7 +72,7 @@ export default () => {
 
     Promise.all(feedPromises)
       .finally(() =>
-        setTimeout(() => updatePosts(), 5000),
+        setTimeout(() => updatePosts(), 1000),
       )
   }
 
@@ -101,11 +104,12 @@ export default () => {
               state.RSSprocess.process.processState = 'failed'
               throw new Error('Empty response contents')
             })
-            .then(({ items, title }) => {
+            .then(({ items, description, title }) => {
               const feedID = state.RSSprocess.feeds.length + 1
               state.RSSprocess.feeds.push({
                 id: feedID,
                 title: title,
+                description: description,
                 url: url,
               })
               addPostToState(feedID, items, state.RSSprocess.posts)

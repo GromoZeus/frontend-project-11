@@ -1,3 +1,5 @@
+// Модуль для обновления пользовательского интерфейса на основе состояния приложения.
+
 import { snapshot } from 'valtio/vanilla'
 
 const renderPosts = (obj) => {
@@ -78,7 +80,7 @@ const renderFeeds = (obj) => {
 
     const paragraph = document.createElement('p')
     paragraph.className = 'm-0 small text-black-50'
-    paragraph.textContent = 'This is a constantly updating lorem ipsum feed'
+    paragraph.textContent = item.description
 
     liElement.appendChild(heading)
     liElement.appendChild(paragraph)
